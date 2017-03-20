@@ -87,3 +87,5 @@ ENV/
 
 # Rope project settings
 .ropeproject
+*.xml
+HW1/.idea/HW1.iml
