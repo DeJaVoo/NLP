@@ -112,14 +112,11 @@ def main():
         exit("Invalid number of arguments")
 
     try:
-        #  User-Agent
-        headers = {'User-Agent': 'Mozilla/5.0'}
         # GET page
-        page = requests.get(url, headers=headers)
-
+        with open(url, "r" , encoding='utf-8') as file:
+            page = file.read()
         # Get HTML Tree
-        tree = html.fromstring(page.content)
-
+        tree = html.fromstring(page)
         # Title & Author & Date
         post_entry = '//article[@class="post-entry post"]'
         meta_data = '/p[@class="post-meta"]'
