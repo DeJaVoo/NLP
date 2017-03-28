@@ -1,10 +1,17 @@
-from lxml import html
-import requests
-import re
 import os
+import re
 from sys import argv, exit
 
-path = ""
+from lxml import html
+
+NON_DIGIT_SPECIAL_CHARTERS = r'(\.|:)'
+
+SPECIAL_CHARACTERS_GROUP = r'(\\|/|\(|\)|;|\{|\}|\[|\]|<|>|!|\?|\+|=)'
+
+CAPTION_CENTER = 'wp-caption aligncenter'
+CAPTION_LEFT = 'wp-caption alignleft'
+CAPTION_RIGHT = 'wp-caption alignright'
+
 number_of_args = 3
 
 
@@ -17,23 +24,36 @@ def get_paragraphs(tree):
     Returns:
         String of all Paragraphs text
     """
-    text = ''
-    for elm in tree:
+    result = []
+    for element in tree:
         # only go deep in divs
-        if elm.tag == 'div' and \
-                ('class' not in elm.attrib or elm.attrib['class'] != 'wp-caption aligncenter') \
-                and elm.text_content() != '':
-            text += get_paragraphs(elm)  # find paragraphs in nested nodes
-        elif elm.tag == 'p' or elm.tag == 'h3':
-            p = elm.text_content()
-            # <p> contains only text, ignoring all scripts, images, etc.
+        if element.tag == 'div' and element.text_content() != '' and not is_content_class(element):
+            res = get_paragraphs(element)  # find paragraphs in nested nodes
+            for r in res:
+                result.append(r)
+        elif is_valid_p_element(element) or element.tag == 'h3':
+            p = element.text_content()
+            # <p> contains only result, ignoring all scripts, images, etc.
             if p.strip() != '':
                 # In case the sentence doesn't contain dot at the end of the string synthetically add dot at the end
-                elementText = elm.text_content()
-                if not elementText.endswith('.'):
-                    elementText += '.'
-                text += elementText
-    return text
+                result.append(p)
+    return result
+
+
+def is_valid_p_element(element):
+    return element.tag == 'p' and ('class' not in element.attrib or element.attrib['class'] != "wp-caption-text")
+
+
+def is_content_class(elm):
+    clazz = elm.attrib['class']
+    is_left_caption = clazz == CAPTION_LEFT
+    is_right_caption = clazz == CAPTION_RIGHT
+    is_center_caption = clazz == CAPTION_CENTER
+    return 'class' in elm.attrib and (is_center_caption or is_right_caption or is_left_caption)
+
+
+def is_in_of_sentence_char(c):
+    return c == "?" or c == "." or c == "!"
 
 
 def split_into_sentences(text):
@@ -45,11 +65,36 @@ def split_into_sentences(text):
         sentences
     """
     # split on ".", "?", "!"
-    sentences_endings = re.compile(r'[^\.!?]*[\.!?]+', re.DOTALL)
-    return re.findall(sentences_endings, text)
+    sentences_list = []
+    sentence = ""
+    mode = "during"
+    for c in text:
+        if mode == "during":
+            sentence += c
+            if is_in_of_sentence_char(c):
+                mode = "ending"
+        else:
+            if not is_in_of_sentence_char(c):
+                mode = "during"
+                sentences_list.append(sentence)
+                sentence = c
+            else:
+                sentence += c
+    if sentence != "":
+        sentences_list.append(sentence)
+    return strip_string_list(sentences_list)
+    # sentences_endings = re.compile(r'[^\.!?]*[\.!?\n]+', re.DOTALL)
+    # return re.findall(sentences_endings, text)
 
 
-def create_file_with_given_text(file_name, text):
+def strip_string_list(sentences_list):
+    trimmed_sentences_list = []
+    for s in sentences_list:
+        trimmed_sentences_list.append(s.strip())
+    return trimmed_sentences_list
+
+
+def create_file_with_given_text(path, file_name, text):
     """
     The method purpose is to create a new file with utf-8 encoding according to given file_name
     and write the given text to file.
@@ -68,6 +113,72 @@ def create_file_with_given_text(file_name, text):
 
 
 def tokenize(sentences):
+    """
+    tokenize the sentences
+    """
+
+    newSentences = []
+    for s in sentences:
+        st = space_around_non_digit_special_characters(s)
+        st = space_around_special_characters(st)
+        st = space_around_not_middle_of_a_word_special_characters(st)
+        st = remove_double_spaces(st)
+        if not st.startswith(" "):
+            st = " " + st
+        if not st.endswith(" "):
+            st += " "
+        newSentences.append(st)
+    return newSentences
+
+
+def remove_double_spaces(st):
+    r = re.compile(r'(\s)+')
+    st = r.sub(r' ', st)
+    return st
+
+
+def space_around_special_characters(s):
+    """
+    Add a whitespace before and after "\" "/" "(" ")" ";" "{"  "}"  "[" "]" "<" ">" "!" "?" "+" "="
+    :param s:
+    :return:
+    """
+    r = re.compile(r'(\\|/|\(|\)|;|\{|\}|\[|\]|<|>|!|\?|\+|=)')
+    return r.sub(r' \1 ', s)
+    # return st
+
+
+def space_around_non_digit_special_characters(s):
+    """
+    Add a whitespace before and  after "," / "." / ":"  ";" if not surrounded by digits
+    :param s:
+    :return:
+    """
+    r = re.compile(r'(?<!\d|\s)' + NON_DIGIT_SPECIAL_CHARTERS + r'(?!\d)')
+    st = r.sub(r' \1 ', s)
+    r = re.compile(r'(?<!\d)' + NON_DIGIT_SPECIAL_CHARTERS + r'(?!\d|\s)')
+    st = r.sub(r' \1 ', st)
+    r = re.compile(r'(?<=.)(,)(?!\d\d\d)')  # less then 3 digit
+    st = r.sub(r' \1 ', st)
+    r = re.compile(r'(?<=.)(,)(?=\d\d\d\d)')  # more then 3 digit
+    st = r.sub(r' \1 ', st)
+    return st
+
+
+def space_around_not_middle_of_a_word_special_characters(s):
+    """
+    Add a whitespace before and after " ' if not in the middle of a word
+    :param s:
+    :return:
+    """
+    # Add a whitespace before " if a whitespace exists after
+    r = re.compile(r'(")(?![א-ת])')
+    st = r.sub(r' \1 ', s)
+    r = re.compile(r'(?<![א-ת])(")')
+    return r.sub(r' \1 ', st)
+
+
+def tokenize2(sentences):
     """
     tokenize the sentences
     """
@@ -102,18 +213,16 @@ def tokenize(sentences):
 
 
 def main():
-    global path, url
-
     # Check for expected number of Arguments
-    if len(argv) == number_of_args:
-        script, url, path = argv
-        print("The given path is: " + path)
-    else:
+    if len(argv) != number_of_args:
         exit("Invalid number of arguments")
+
+    script, url, path = argv
+    print("The given path is: " + path)
 
     try:
         # GET page
-        with open(url, "r" , encoding='utf-8') as file:
+        with open(url, "r", encoding='utf-8') as file:
             page = file.read()
         # Get HTML Tree
         tree = html.fromstring(page)
@@ -133,26 +242,27 @@ def main():
 
         # Get all article content
         text = get_paragraphs(tree.xpath('//section[@class="post-content "]')[0].getchildren())
-
+        text = [title] + text
         # Concat with title & sub title (separated by ".")
-        text = title + "." + author + "." + date + "." + text
+        # text = title + "." + author + "." + date + "." + text
         # Replace multiple whitespace with single whitespace
-        text = " ".join(text.split())
+        # text = " ".join(text.split())
 
         # Step 1: save to file
-        create_file_with_given_text("article.txt", text)
+        create_file_with_given_text(path, "article.txt", "".join(text))
 
         # Step 2: split into sentences
-        tmp_sentences = split_into_sentences(text)
         sentences = []
-        for s in tmp_sentences:
-            sentences.append(s.strip())
+        for paragraph in text:
+            tmp_sentences = split_into_sentences(paragraph)
+            for s in tmp_sentences:
+                sentences.append(s)
 
-        create_file_with_given_text("article_sentences.txt", "\n".join(sentences))
+        create_file_with_given_text(path, "article_sentences.txt", "\n".join(sentences))
 
         # Step 3: tokenize
         newSentences = tokenize(sentences)
-        create_file_with_given_text("article_tokenized.txt", "\n".join(newSentences))
+        create_file_with_given_text(path, "article_tokenized.txt", "\n".join(newSentences))
 
     except ConnectionError as ex:
         print("Connection to geektime failed with ({0}): {1}".format(ex.errno, ex.strerror))
