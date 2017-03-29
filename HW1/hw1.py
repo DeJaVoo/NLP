@@ -4,9 +4,7 @@ from sys import argv, exit
 
 from lxml import html
 
-NON_DIGIT_SPECIAL_CHARTERS = r'(\.|:)'
-
-SPECIAL_CHARACTERS_GROUP = r'(\\|/|\(|\)|;|\{|\}|\[|\]|<|>|!|\?|\+|=)'
+NON_DIGIT_SPECIAL_CHARTERS = r'(\.|:|\\|/)'
 
 CAPTION_CENTER = 'wp-caption aligncenter'
 CAPTION_LEFT = 'wp-caption alignleft'
@@ -52,8 +50,24 @@ def is_content_class(elm):
     return 'class' in elm.attrib and (is_center_caption or is_right_caption or is_left_caption)
 
 
-def is_in_of_sentence_char(c):
-    return c == "?" or c == "." or c == "!"
+def is_a_digit(c):
+    return "0" <= c <= "9"
+
+
+def is_english_latter(c):
+    return "a" <= c <= "z" or "A" <= c <= "Z"
+
+
+def is_sentence_ending_char(c, text, i):
+    if c == "." and len(text) > (i + 1) and i > 0:
+        before = text[i - 1]
+        after = text[i + 1]
+        if is_a_digit(before) and is_a_digit(after):
+            return False
+        if is_english_latter(before) and is_english_latter(after):
+            return False
+        return True
+    return c == "?" or c == "!" or c == "."
 
 
 def split_into_sentences(text):
@@ -68,13 +82,13 @@ def split_into_sentences(text):
     sentences_list = []
     sentence = ""
     mode = "during"
-    for c in text:
+    for i, c in enumerate(text):
         if mode == "during":
             sentence += c
-            if is_in_of_sentence_char(c):
+            if is_sentence_ending_char(c, text, i):
                 mode = "ending"
         else:
-            if not is_in_of_sentence_char(c):
+            if not is_sentence_ending_char(c, text, i):
                 mode = "during"
                 sentences_list.append(sentence)
                 sentence = c
@@ -83,8 +97,6 @@ def split_into_sentences(text):
     if sentence != "":
         sentences_list.append(sentence)
     return strip_string_list(sentences_list)
-    # sentences_endings = re.compile(r'[^\.!?]*[\.!?\n]+', re.DOTALL)
-    # return re.findall(sentences_endings, text)
 
 
 def strip_string_list(sentences_list):
@@ -143,7 +155,7 @@ def space_around_special_characters(s):
     :param s:
     :return:
     """
-    r = re.compile(r'(\\|/|\(|\)|;|\{|\}|\[|\]|<|>|!|\?|\+|=)')
+    r = re.compile(r'(\(|\)|;|\{|\}|\[|\]|<|>|\+|=)')
     return r.sub(r' \1 ', s)
     # return st
 
@@ -167,7 +179,7 @@ def space_around_non_digit_special_characters(s):
 
 def space_around_not_middle_of_a_word_special_characters(s):
     """
-    Add a whitespace before and after " ' if not in the middle of a word
+    Add a whitespace before and after "  if not in the middle of a  hebrew word
     :param s:
     :return:
     """
@@ -175,41 +187,11 @@ def space_around_not_middle_of_a_word_special_characters(s):
     r = re.compile(r'(")(?![א-ת])')
     st = r.sub(r' \1 ', s)
     r = re.compile(r'(?<![א-ת])(")')
+    st = r.sub(r' \1 ', st)
+    r = re.compile(r'(?<![א-ת])(\')(?![a-zA-Z])')
+    st = r.sub(r' \1 ', st)
+    r = re.compile(r'(?<![א-תa-zA-Z])(\')')
     return r.sub(r' \1 ', st)
-
-
-def tokenize2(sentences):
-    """
-    tokenize the sentences
-    """
-
-    newSentences = []
-    for s in sentences:
-        # Add a whitespace before "," / "." / ":" ( not surrounded by digits )
-        r = re.compile(r'(?<!\d|\s)(,|\.|:|;)(?!=\d)')
-        s1 = (r.sub(r' \1', s))
-        r = re.compile(r'(?<!\s)(\\|/|\(|\)|;|\{|\}|\[|\]|<|>|!|\?|\+|=)')
-        s2 = (r.sub(r' \1', s1))
-        # Add a whitespace after "," / "." / ":" ( not surrounded by digits )
-        r = re.compile(r'(?<!\d)(,|\.|:)(?!=\d|\s)')
-        s3 = (r.sub(r'\1 ', s2))
-        r = re.compile(r'(\\|/|\(|\)|;|\{|\}|\[|\]|<|>|!|\?|\+|=)(?!=\s)')
-        s4 = (r.sub(r'\1 ', s3))
-        # Add a whitespace before " if a whitespace exists after
-        r = re.compile(r'(?<=\w)("|\')(?=\s)')
-        s5 = (r.sub(r' \1', s4))
-        # Add a whitespace after " if a whitespace exists before
-        r = re.compile(r'(?<=\s)("|\')(?=\w)')
-        s6 = r.sub(r'\1 ', s5)
-        # Add a whitespace after " if it is the beginning of a sentence
-        if s6.startswith('\"'):
-            s6 = s6[1:]
-            s6 = '" ' + s6
-        elif s6.startswith('\''):
-            s6 = s6[1:]
-            s6 = '\' ' + s6
-        newSentences.append(s6)
-    return newSentences
 
 
 def main():
@@ -228,25 +210,11 @@ def main():
         tree = html.fromstring(page)
         # Title & Author & Date
         post_entry = '//article[@class="post-entry post"]'
-        meta_data = '/p[@class="post-meta"]'
         title = tree.xpath(post_entry + '/h1/text()')[0]
-        author = tree.xpath(post_entry + meta_data + '/a[@rel="author"]/text()')[0]
-
-        try:
-            date = tree.xpath(post_entry + meta_data + '/span[@class="date"]/text()')[0]
-        except IndexError:
-            date = ''
-
-        # Clean vertical bar from date
-        date = date.replace('|', '')
 
         # Get all article content
         text = get_paragraphs(tree.xpath('//section[@class="post-content "]')[0].getchildren())
         text = [title] + text
-        # Concat with title & sub title (separated by ".")
-        # text = title + "." + author + "." + date + "." + text
-        # Replace multiple whitespace with single whitespace
-        # text = " ".join(text.split())
 
         # Step 1: save to file
         create_file_with_given_text(path, "article.txt", "".join(text))
