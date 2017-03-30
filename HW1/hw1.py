@@ -214,7 +214,7 @@ def main():
             page = file.read()
         # Get HTML Tree
         tree = html.fromstring(page)
-        # Title & Author & Date
+        # Title
         post_entry = '//article[@class="post-entry post"]'
         title = tree.xpath(post_entry + '/h1/text()')[0]
 
