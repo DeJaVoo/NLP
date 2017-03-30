@@ -39,10 +39,20 @@ def get_paragraphs(tree):
 
 
 def is_valid_p_element(element):
+    """
+    Checking if the paragraph element is valid (in term of geektime articles)
+    :param element: given html element (lxml)
+    :return: true or false
+    """
     return element.tag == 'p' and ('class' not in element.attrib or element.attrib['class'] != "wp-caption-text")
 
 
 def is_content_class(elm):
+    """
+    Checking if the class is type of content
+    :param elm: given html element (lxml)
+    :return: true or false
+    """
     clazz = elm.attrib['class']
     is_left_caption = clazz == CAPTION_LEFT
     is_right_caption = clazz == CAPTION_RIGHT
@@ -51,22 +61,51 @@ def is_content_class(elm):
 
 
 def is_a_digit(c):
+    """
+    Checking if the given char is a digit
+    :param c:given char
+    :return: return true or false is the given char is digit
+    """
     return "0" <= c <= "9"
 
 
-def is_english_latter(c):
+def is_english_letter(c):
+    """
+    Checking if given char is an english letter
+    :param c: given char
+    :return: true or false
+    """
     return "a" <= c <= "z" or "A" <= c <= "Z"
 
 
 def between_digits(before, after):
+    """
+    Checking is the given before and after are between digits
+    :param before: char
+    :param after: char
+    :return: true or false
+    """
     return is_a_digit(before) and is_a_digit(after)
 
 
 def between_english_letters(before, after):
-    return is_english_latter(before) and is_english_latter(after)
+    """
+    Checking if before and after is between english letter
+    :param before: char
+    :param after: char
+    :return: true or false
+    """
+    return is_english_letter(before) and is_english_letter(after)
 
 
 def is_sentence_ending_char(c, text, i):
+    """
+    Checking if given char is an ending char
+    :param c:
+    :param text:
+    :param i:
+    :return:true or false if char is an ending char (?.!)
+    """
     if c == "." and len(text) > (i + 1) and i > 0:
         before = text[i - 1]
         after = text[i + 1]
@@ -104,6 +143,11 @@ def split_into_sentences(text):
 
 
 def strip_string_list(sentences_list):
+    """
+    The method strip a list of sentences from trailing whitespaces
+    :param sentences_list: list of sentences to strip from whitespaces
+    :return: trimmed sentences list
+    """
     trimmed_sentences_list = []
     for s in sentences_list:
         trimmed_sentences_list.append(s.strip())
@@ -150,6 +194,11 @@ def tokenize(sentences):
 
 
 def remove_double_spaces(st):
+    """
+    Remove double spaces
+    :param st: string to manipulate
+    :return: removed double spaced string
+    """
     r = re.compile(r'(\s)+')
     st = r.sub(r' ', st)
     return st
