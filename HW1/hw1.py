@@ -58,15 +58,19 @@ def is_english_latter(c):
     return "a" <= c <= "z" or "A" <= c <= "Z"
 
 
+def between_digits(before, after):
+    return is_a_digit(before) and is_a_digit(after)
+
+
+def between_english_letters(before, after):
+    return is_english_latter(before) and is_english_latter(after)
+
+
 def is_sentence_ending_char(c, text, i):
     if c == "." and len(text) > (i + 1) and i > 0:
         before = text[i - 1]
         after = text[i + 1]
-        if is_a_digit(before) and is_a_digit(after):
-            return False
-        if is_english_latter(before) and is_english_latter(after):
-            return False
-        return True
+        return not between_digits(before, after) and not between_english_letters(before, after)
     return c == "?" or c == "!" or c == "."
 
 
@@ -242,3 +246,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
