@@ -4,6 +4,7 @@ from sys import argv, exit
 
 from lxml import html
 
+
 NON_DIGIT_SPECIAL_CHARTERS = r'(\.|:|\\|/)'
 
 CAPTION_CENTER = 'wp-caption aligncenter'
@@ -163,6 +164,9 @@ def create_file_with_given_text(path, file_name, text):
         text to save
     Returns:
         None
+        :type text: text to save
+        :param file_name: file name
+        :param path: path to save file
     """
     try:
         if not os.path.exists(path):
@@ -297,4 +301,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
