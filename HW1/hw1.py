@@ -121,6 +121,8 @@ def create_file_with_given_text(path, file_name, text):
         None
     """
     try:
+        if not os.path.exists(path):
+            os.makedirs(path)
         text_file = open(os.path.join(path, file_name), 'w', encoding='utf-8')
         text_file.write(text)
         text_file.close()
