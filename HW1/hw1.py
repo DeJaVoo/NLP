@@ -254,6 +254,11 @@ def space_around_not_middle_of_a_word_special_characters(s):
 
 
 def space_around_end_of_sentence_char(s):
+    """
+    add space around end of sentences
+    :param s: string
+    :return: manipulated string
+    """
     r = re.compile(r'(\?|\.|!)(?!\d|[a-z])')
     return r.sub(r' \1 ', s)
 
