@@ -4,7 +4,6 @@ from sys import argv, exit
 
 from lxml import html
 
-
 NON_DIGIT_SPECIAL_CHARTERS = r'(\.|:|\\|/)'
 
 CAPTION_CENTER = 'wp-caption aligncenter'
@@ -187,6 +186,7 @@ def tokenize(sentences):
         st = space_around_non_digit_special_characters(s)
         st = space_around_special_characters(st)
         st = space_around_not_middle_of_a_word_special_characters(st)
+        st = space_around_end_of_sentence_char(st)
         st = remove_double_spaces(st)
         if not st.startswith(" "):
             st = " " + st
@@ -213,7 +213,7 @@ def space_around_special_characters(s):
     :param s:
     :return:
     """
-    r = re.compile(r'(\(|\)|;|\{|\}|\[|\]|<|>|\+|=|\?|\.|!)')
+    r = re.compile(r'(\(|\)|;|\{|\}|\[|\]|<|>|\+|=)')
     return r.sub(r' \1 ', s)
     # return st
 
@@ -250,6 +250,11 @@ def space_around_not_middle_of_a_word_special_characters(s):
     st = r.sub(r' \1 ', st)
     r = re.compile(r'(?<![א-תa-zA-Z])(\')')
     return r.sub(r' \1 ', st)
+
+
+def space_around_end_of_sentence_char(s):
+    r = re.compile(r'(\?|\.|!)(?!\d|[a-z])')
+    return r.sub(r' \1 ', s)
 
 
 def main():
