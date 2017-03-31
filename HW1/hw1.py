@@ -121,6 +121,7 @@ def split_into_sentences(text):
         sentences
     """
     # split on ".", "?", "!"
+    text = remove_double_spaces(text)
     sentences_list = []
     sentence = ""
     mode = "during"
