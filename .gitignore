@@ -89,3 +89,7 @@ ENV/
 .ropeproject
 *.xml
 HW1/.idea/HW1.iml
+*.aligned
+*.tok
+HW2/.idea/HW2.iml
+*.html
