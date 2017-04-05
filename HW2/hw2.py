@@ -1,4 +1,5 @@
 import glob
+import operator
 import os
 from collections import Counter
 from math import log, sqrt
@@ -22,6 +23,13 @@ def create_file(path, file_name, data):
             print("Encountered an error while writing to file")
             print(text)
     file.close()
+
+
+def order(dictionary):
+    list = sorted(dictionary.items(),  key=operator.itemgetter(0))
+    # Sort lists by value
+    list = sorted(list, key=operator.itemgetter(1), reverse=True)
+    return list
 
 
 def load_corpus(path, corpus):
@@ -226,7 +234,7 @@ def main():
         bigrams_PMI = calculate_bigrams_PMI(bigrams_probability, unigrams_probability)
 
         # Calculate bigrams T-test
-        bigrams_t_test = calculate_bigrams_t_test(bigrams_probability, unigrams_probability, unigrams)
+        bigrams_T_test = calculate_bigrams_t_test(bigrams_probability, unigrams_probability, unigrams)
 
         # Calculate bigrams X2-test
         bigrams_X2_test = calculate_X2_test(bigrams_probability, unigrams_probability)
@@ -247,7 +255,30 @@ def main():
         trigrams_X3_test_a = calculate_X3_test_a(trigrams_probability, unigrams_probability)
 
         # Calculate trigrams X3-test b
-        trigrams_X3_test_a = calculate_X3_test_b(bigrams_probability,trigrams_probability)
+        trigrams_X3_test_b = calculate_X3_test_b(bigrams_probability,trigrams_probability)
+
+        # Order alphabetically afterwards sort lists by value and take only first 100 elements
+        sorted_bigrams_raw_freq = order(bigrams_raw_freq)[:100]
+        sorted_bigrams_PMI = order(bigrams_PMI)[:100]
+        sorted_bigrams_T_test = order(bigrams_T_test)[:100]
+        sorted_bigrams_X2_test = order(bigrams_X2_test)[:100]
+        sorted_trigrams_T3_test_a = order(trigrams_T3_test_a)[:100]
+        sorted_trigrams_T3_test_b = order(trigrams_T3_test_b)[:100]
+        sorted_trigrams_X3_test_a = order(trigrams_X3_test_a)[:100]
+        sorted_trigrams_X3_test_b = order(trigrams_X3_test_b)[:100]
+
+
+        # Save files
+        # freq_raw.txt, pmi_pair.txt, ttest_pair.txt, xtest_pair.txt,
+        # ttest_tri_a.txt, ttest_tri_b.txt, xtest_tri_a.txt, xtest_tri_b.txt files
+        create_file(output_path, "freq_raw.txt", sorted_bigrams_raw_freq)
+        create_file(output_path, "pmi_pair.txt", sorted_bigrams_PMI)
+        create_file(output_path, "ttest_pair.txt", sorted_bigrams_T_test)
+        create_file(output_path, "xtest_pair.txt", sorted_bigrams_X2_test)
+        create_file(output_path, "ttest_tri_a.txt", sorted_trigrams_T3_test_a)
+        create_file(output_path, "ttest_tri_b.txt", sorted_trigrams_T3_test_b)
+        create_file(output_path, "xtest_tri_a.txt", sorted_trigrams_X3_test_a)
+        create_file(output_path, "xtest_tri_b.txt", sorted_trigrams_X3_test_b)
 
     except:
         print("General error")
