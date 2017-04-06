@@ -12,6 +12,7 @@ def create_file(path, file_name, data):
     """
     Create file with given data
     """
+    # Make sure the path folder exists, if not create it
     if not os.path.exists(path):
         os.makedirs(path)
     file = open(os.path.join(path, file_name), 'w+', encoding='utf-8')
@@ -25,11 +26,17 @@ def create_file(path, file_name, data):
     file.close()
 
 
-def order(dictionary):
-    list = sorted(dictionary.items(),  key=operator.itemgetter(0))
-    # Sort lists by value
-    list = sorted(list, key=operator.itemgetter(1), reverse=True)
-    return list
+def sort_data(data):
+    """
+    The method sort data alphabetic and by value
+    :param data: given data
+    :return: sorted data
+    """
+    # Sort given data by alphabetic order
+    alphabetic_sorted_list = sorted(data.items(), key=operator.itemgetter(0))
+    # Sort given data by value
+    sorted_list_by_value = sorted(alphabetic_sorted_list, key=operator.itemgetter(1), reverse=True)
+    return sorted_list_by_value
 
 
 def load_corpus(path, corpus):
@@ -60,7 +67,7 @@ def get_trigrams(corpus):
 
 def get_bigrams(corpus):
     """
-    he method separate each line to its tokens and return the given corpus's bigrams
+    The method separate each line to its tokens and return the given corpus's bigrams
     :param corpus: given corpus
     :return: bigrams in the following structure ("W1" , "W2")
     """
@@ -88,6 +95,7 @@ def get_unigrams(corpus):
 def probability(data):
     """
     Calculate given data probability according to the formula from lecture #6
+    
     count(w)/(number of words in text)
     :param data: given data
     :return: probability of each val in data
@@ -105,17 +113,33 @@ def probability(data):
 
 
 def bigrams_raw_frequency(bigrams, unigrams):
+    """
+    Calculate bigrams raw frequency
+    
+    raw = bigrams_count_freq/unigrams_size
+    :param bigrams: bigrams
+    :param unigrams: unigrams
+    :return: bigrams raw frequency
+    """
     bigrams_raw_frequency = {}
     unique_bigrams = list(set(bigrams))
     bigrams_count_freq = Counter(bigrams)
     unigrams_size = len(unigrams)
 
-    for bi in unique_bigrams:
-        bigrams_raw_frequency[bi] = round((bigrams_count_freq[bi] / unigrams_size) * 1000, 3)
+    for bigram in unique_bigrams:
+        bigrams_raw_frequency[bigram] = round((bigrams_count_freq[bigram] / unigrams_size) * 1000, 3)
     return bigrams_raw_frequency
 
 
 def calculate_bigrams_PMI(bigrams_probability, unigrams_probability):
+    """
+    Calculate bigrams PMI
+    
+    PMI(x,y) = log2(P(xy)/P(x)*P(y))
+    :param bigrams_probability: bigrams_probability
+    :param unigrams_probability: unigrams_probability
+    :return: bigrams PMI
+    """
     bigrams_PMI = {}
     for bigram, bigram_probability in bigrams_probability.items():
         w1 = bigram[0]
@@ -128,6 +152,15 @@ def calculate_bigrams_PMI(bigrams_probability, unigrams_probability):
 
 
 def calculate_bigrams_t_test(bigrams_probability, unigrams_probability, unigrams):
+    """
+    Calculate T test
+    
+    T = [ P(xy)-P(x)P(y) ] / [sqrt(P(xy)/N)]
+    :param bigrams_probability: bigrams_probability
+    :param unigrams_probability: unigrams_probability
+    :param unigrams: unigrams
+    :return: T test
+    """
     bigrams_T_test = {}
     unigrams_size = len(unigrams)
     for bigram, bigram_probability in bigrams_probability.items():
@@ -140,6 +173,14 @@ def calculate_bigrams_t_test(bigrams_probability, unigrams_probability, unigrams
 
 
 def calculate_X2_test(bigrams_probability, unigrams_probability):
+    """
+    Calculate X2 test
+    
+    X = [ P(xy)-P(x)P(y) ] / [P(x)P(y)]
+    :param bigrams_probability: bigrams_probability
+    :param unigrams_probability: unigrams_probability
+    :return: X2 test
+    """
     bigrams_X2_test = {}
     for bigram, bigram_probability in bigrams_probability.items():
         w1 = bigram[0]
@@ -151,6 +192,15 @@ def calculate_X2_test(bigrams_probability, unigrams_probability):
 
 
 def calculate_trigrams_T3_test_a(trigrams_probability, unigrams_probability, unigrams):
+    """
+    Calculate T3 test a
+    
+    t3_a =  [ P(xyz)-P(x)P(y)P(z) ] / [sqrt(P(xyz)/N)]
+    :param trigrams_probability: trigrams_probability
+    :param unigrams_probability: unigrams_probability
+    :param unigrams: unigrams
+    :return: T3 test a
+    """
     trigram_T3_test_a = {}
     unigrams_size = len(unigrams)
     for trigram, trigram_probability in trigrams_probability.items():
@@ -164,6 +214,15 @@ def calculate_trigrams_T3_test_a(trigrams_probability, unigrams_probability, uni
 
 
 def calculate_trigrams_T3_test_b(bigrams_probability, trigrams_probability, unigrams):
+    """
+    Calculate T3 test b
+    
+    t3_b = [ P(xyz)-P(xy)P(yz) ] / [sqrt(P(xyz)/N)]
+    :param bigrams_probability: bigrams_probability
+    :param trigrams_probability: trigrams_probability
+    :param unigrams: unigrams
+    :return: T3 test b
+    """
     trigram_T3_test_b = {}
     unigrams_size = len(unigrams)
     for trigram, trigram_probability in trigrams_probability.items():
@@ -179,6 +238,14 @@ def calculate_trigrams_T3_test_b(bigrams_probability, trigrams_probability, unig
 
 
 def calculate_X3_test_a(trigrams_probability, unigrams_probability):
+    """
+    Calculate X3 test a
+    
+    x3_a = [ P(xyz)-P(x)P(y)P(z) ] / [P(x)P(y)p(z)]
+    :param unigrams_probability: unigrams probability
+    :param trigrams_probability:  trigrams probability
+    :return: X3 test a
+    """
     trigrams_X3_test_a = {}
     for trigram, trigram_probability in trigrams_probability.items():
         w1 = trigram[0]
@@ -191,6 +258,14 @@ def calculate_X3_test_a(trigrams_probability, unigrams_probability):
 
 
 def calculate_X3_test_b(bigrams_probability, trigrams_probability):
+    """
+    Calculate X3 test b
+    
+    x3_b =  [ P(xyz)-P(xy)P(yz) ] / [P(xy)P(yz)]
+    :param bigrams_probability: bigrams probability
+    :param trigrams_probability:  trigrams probability
+    :return: X3 test b
+    """
     trigrams_X3_test_b = {}
     for trigram, trigram_probability in trigrams_probability.items():
         w1 = trigram[0]
@@ -255,20 +330,19 @@ def main():
         trigrams_X3_test_a = calculate_X3_test_a(trigrams_probability, unigrams_probability)
 
         # Calculate trigrams X3-test b
-        trigrams_X3_test_b = calculate_X3_test_b(bigrams_probability,trigrams_probability)
+        trigrams_X3_test_b = calculate_X3_test_b(bigrams_probability, trigrams_probability)
 
         # Order alphabetically afterwards sort lists by value and take only first 100 elements
-        sorted_bigrams_raw_freq = order(bigrams_raw_freq)[:100]
-        sorted_bigrams_PMI = order(bigrams_PMI)[:100]
-        sorted_bigrams_T_test = order(bigrams_T_test)[:100]
-        sorted_bigrams_X2_test = order(bigrams_X2_test)[:100]
-        sorted_trigrams_T3_test_a = order(trigrams_T3_test_a)[:100]
-        sorted_trigrams_T3_test_b = order(trigrams_T3_test_b)[:100]
-        sorted_trigrams_X3_test_a = order(trigrams_X3_test_a)[:100]
-        sorted_trigrams_X3_test_b = order(trigrams_X3_test_b)[:100]
+        sorted_bigrams_raw_freq = sort_data(bigrams_raw_freq)[:100]
+        sorted_bigrams_PMI = sort_data(bigrams_PMI)[:100]
+        sorted_bigrams_T_test = sort_data(bigrams_T_test)[:100]
+        sorted_bigrams_X2_test = sort_data(bigrams_X2_test)[:100]
+        sorted_trigrams_T3_test_a = sort_data(trigrams_T3_test_a)[:100]
+        sorted_trigrams_T3_test_b = sort_data(trigrams_T3_test_b)[:100]
+        sorted_trigrams_X3_test_a = sort_data(trigrams_X3_test_a)[:100]
+        sorted_trigrams_X3_test_b = sort_data(trigrams_X3_test_b)[:100]
 
-
-        # Save files
+        # Save files:
         # freq_raw.txt, pmi_pair.txt, ttest_pair.txt, xtest_pair.txt,
         # ttest_tri_a.txt, ttest_tri_b.txt, xtest_tri_a.txt, xtest_tri_b.txt files
         create_file(output_path, "freq_raw.txt", sorted_bigrams_raw_freq)
