@@ -68,7 +68,6 @@ def get_n_grams(corpus, n):
             n_gram = tuple()
             for j in range(n):
                 n_gram = n_gram + (line[i + j],)
-            # if all(words_counter[w] >= MIN_COUNT for w in n_gram):
             n_grams.append(n_gram)
     return n_grams
 
@@ -221,7 +220,8 @@ def calculate_trigrams_T3_test_a(unigrams, unigrams_probability, trigrams_probab
             w1 = trigram[0]
             w2 = trigram[1]
             w3 = trigram[2]
-            numerator = trigram_probability - unigrams_probability[w1] * unigrams_probability[w2] * unigrams_probability[w3]
+            numerator = trigram_probability - unigrams_probability[w1] * unigrams_probability[w2] * \
+                                              unigrams_probability[w3]
             denominator = sqrt(trigram_probability / N)
             trigram_T3_test_a[trigram] = round((numerator / denominator), 3)
     return trigram_T3_test_a
@@ -269,7 +269,8 @@ def calculate_X3_test_a(unigrams_probability, trigrams_probability, words_counte
             w1 = trigram[0]
             w2 = trigram[1]
             w3 = trigram[2]
-            numerator = trigram_probability - unigrams_probability[w1] * unigrams_probability[w2] * unigrams_probability[w3]
+            numerator = trigram_probability - unigrams_probability[w1] * unigrams_probability[w2] * \
+                                              unigrams_probability[w3]
             denominator = unigrams_probability[w1] * unigrams_probability[w2] * unigrams_probability[w3]
             trigrams_X3_test_a[trigram] = round((numerator / denominator), 3)
     return trigrams_X3_test_a
@@ -309,9 +310,11 @@ def get_corpus_data(corpus):
 
 def get_trigrams_results(bigram_probability, trigram_probability, unigram_probability, unigrams, unigrams_counter):
     # Calculate trigrams T3-test a
-    trigrams_T3_test_a = calculate_trigrams_T3_test_a(unigrams, unigram_probability, trigram_probability, unigrams_counter)
+    trigrams_T3_test_a = calculate_trigrams_T3_test_a(unigrams, unigram_probability, trigram_probability,
+                                                      unigrams_counter)
     # Calculate trigrams T3-test b
-    trigrams_T3_test_b = calculate_trigrams_T3_test_b(unigrams, bigram_probability, trigram_probability, unigrams_counter)
+    trigrams_T3_test_b = calculate_trigrams_T3_test_b(unigrams, bigram_probability, trigram_probability,
+                                                      unigrams_counter)
     # Calculate trigrams X3-test a
     trigrams_X3_test_a = calculate_X3_test_a(unigram_probability, trigram_probability, unigrams_counter)
     # Calculate trigrams X3-test b
@@ -321,6 +324,11 @@ def get_trigrams_results(bigram_probability, trigram_probability, unigram_probab
     sorted_trigrams_X3_test_a = sort_data(trigrams_X3_test_a)[:10000]
     sorted_trigrams_X3_test_b = sort_data(trigrams_X3_test_b)[:10000]
     return sorted_trigrams_T3_test_a, sorted_trigrams_T3_test_b, sorted_trigrams_X3_test_a, sorted_trigrams_X3_test_b
+
+
+def intersect(a, b):
+    res = [v1 for v1 in a if any(v1[0] == v2[0] for v2 in b)]
+    return res
 
 
 def main():
@@ -360,7 +368,8 @@ def main():
         bigrams_PMI = calculate_bigrams_PMI(bigrams_probability, unigrams_probability, merged_unigrams_counter)
 
         # Calculate bigrams T-test
-        bigrams_T_test = calculate_bigrams_t_test(bigrams_probability, unigrams_probability, merged_unigrams, merged_unigrams_counter)
+        bigrams_T_test = calculate_bigrams_t_test(bigrams_probability, unigrams_probability, merged_unigrams,
+                                                  merged_unigrams_counter)
 
         # Calculate bigrams X2-test
         bigrams_X2_test = calculate_X2_test(bigrams_probability, unigrams_probability, merged_unigrams_counter)
@@ -372,9 +381,11 @@ def main():
         sorted_bigrams_X2_test = sort_data(bigrams_X2_test)[:100]
 
         first_T3_test_a, first_T3_test_b, first_X3_test_a, first_X3_test_b = \
-            get_trigrams_results(first_bi_probability, first_tri_probability, first_uni_probability, first_unigrams, first_unigrams_counter)
+            get_trigrams_results(first_bi_probability, first_tri_probability, first_uni_probability, first_unigrams,
+                                 first_unigrams_counter)
         second_T3_test_a, second_T3_test_b, second_X3_test_a, second_X3_test_b = \
-            get_trigrams_results(second_bi_probability, second_tri_probability, second_uni_probability, second_unigrams, second_unigrams_counter)
+            get_trigrams_results(second_bi_probability, second_tri_probability, second_uni_probability, second_unigrams,
+                                 second_unigrams_counter)
 
         # return all(words_counter[w] >= MIN_COUNT for w in n_gram)
 
@@ -398,11 +409,6 @@ def main():
     except:
         print("General error")
         exit()
-
-
-def intersect(a, b):
-    res = [v1 for v1 in a if any(v1[0] == v2[0] for v2 in b)]
-    return res
 
 
 if __name__ == "__main__":
