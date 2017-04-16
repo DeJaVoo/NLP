@@ -44,7 +44,6 @@ def load_corpus(path):
     """
     Load content from path to corpus list
     :param path: given path
-    :param corpus: given list
     :return: filled corpus list returned by reference
     """
     corpus = []
@@ -55,12 +54,11 @@ def load_corpus(path):
     return corpus
 
 
-def get_n_grams(corpus, n, words_counter):
+def get_n_grams(corpus, n):
     """
-    The method separate each line to its tokens and return the given corpus's מ-grams
+    The method separate each line to its tokens and return the given corpus's n-grams
     :param corpus: given corpus
     :param n: the number of words in the n-gram
-    :param words_counter: counter of all the words in the corpus
     :return: a list of n-gram tuples
     """
     n_grams = []
@@ -120,18 +118,19 @@ def bigrams_raw_frequency(bigrams, unigrams, words_counter):
     Calculate bigrams raw frequency
 
     raw = bigrams_count_freq/unigrams_size
+    :param words_counter: counter of all the words in the corpus
     :param bigrams: bigrams
     :param unigrams: unigrams
     :return: bigrams raw frequency
     """
-    bigrams_raw_frequency = {}
+    bi_raw_frequency = {}
     unique_bigrams = list(set(bigrams))
     bigrams_count_freq = Counter(bigrams)
     unigrams_size = len(unigrams)
     for bigram in unique_bigrams:
         if valid_word_count(bigram, words_counter):
-            bigrams_raw_frequency[bigram] = round((bigrams_count_freq[bigram] / unigrams_size) * 1000, 3)
-    return bigrams_raw_frequency
+            bi_raw_frequency[bigram] = round((bigrams_count_freq[bigram] / unigrams_size) * 1000, 3)
+    return bi_raw_frequency
 
 
 def valid_word_count(n_gram, words_counter):
@@ -143,6 +142,7 @@ def calculate_bigrams_PMI(bigrams_probability, unigrams_probability, words_count
     Calculate bigrams PMI
 
     PMI(x,y) = log2(P(xy)/P(x)*P(y))
+    :param words_counter: counter of all the words in the corpus
     :param bigrams_probability: bigrams_probability
     :param unigrams_probability: unigrams_probability
     :return: bigrams PMI
@@ -164,6 +164,7 @@ def calculate_bigrams_t_test(bigrams_probability, unigrams_probability, unigrams
     Calculate T test
 
     T = [ P(xy)-P(x)P(y) ] / [sqrt(P(xy)/N)]
+    :param words_counter: counter of all the words in the corpus
     :param bigrams_probability: bigrams_probability
     :param unigrams_probability: unigrams_probability
     :param unigrams: unigrams
@@ -186,6 +187,7 @@ def calculate_X2_test(bigrams_probability, unigrams_probability, words_counter):
     Calculate X2 test
 
     X = [ P(xy)-P(x)P(y) ] / [P(x)P(y)]
+    :param words_counter: counter of all the words in the corpus
     :param bigrams_probability: bigrams_probability
     :param unigrams_probability: unigrams_probability
     :return: X2 test
@@ -209,6 +211,7 @@ def calculate_trigrams_T3_test_a(unigrams, unigrams_probability, trigrams_probab
     :param trigrams_probability: trigrams_probability
     :param unigrams_probability: unigrams_probability
     :param unigrams: unigrams
+    :param words_counter: counter of all the words in the corpus
     :return: T3 test a
     """
     trigram_T3_test_a = {}
@@ -232,6 +235,7 @@ def calculate_trigrams_T3_test_b(unigrams, bigrams_probability, trigrams_probabi
     :param bigrams_probability: bigrams_probability
     :param trigrams_probability: trigrams_probability
     :param unigrams: unigrams
+    :param words_counter: counter of all the words in the corpus
     :return: T3 test b
     """
     trigram_T3_test_b = {}
@@ -256,6 +260,7 @@ def calculate_X3_test_a(unigrams_probability, trigrams_probability, words_counte
     x3_a = [ P(xyz)-P(x)P(y)P(z) ] / [P(x)P(y)p(z)]
     :param unigrams_probability: unigrams probability
     :param trigrams_probability:  trigrams probability
+    :param words_counter: counter of all the words in the corpus
     :return: X3 test a
     """
     trigrams_X3_test_a = {}
@@ -277,6 +282,7 @@ def calculate_X3_test_b(bigrams_probability, trigrams_probability, words_counter
     x3_b =  [ P(xyz)-P(xy)P(yz) ] / [P(xy)P(yz)]
     :param bigrams_probability: bigrams probability
     :param trigrams_probability:  trigrams probability
+    :param words_counter: counter of all the words in the corpus
     :return: X3 test b
     """
     trigrams_X3_test_b = {}
@@ -296,8 +302,8 @@ def calculate_X3_test_b(bigrams_probability, trigrams_probability, words_counter
 def get_corpus_data(corpus):
     unigram = get_unigrams(corpus)
     unigrams_counter = Counter(unigram)
-    merged_bigrams = get_n_grams(corpus, 2, unigrams_counter)
-    trigrams = get_n_grams(corpus, 3, unigrams_counter)
+    merged_bigrams = get_n_grams(corpus, 2)
+    trigrams = get_n_grams(corpus, 3)
     return merged_bigrams, unigram, trigrams, unigrams_counter
 
 
@@ -401,4 +407,3 @@ def intersect(a, b):
 
 if __name__ == "__main__":
     main()
-
