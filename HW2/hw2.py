@@ -1,3 +1,8 @@
+# *********************#
+# Roy Goldstein 200554191
+# Dvir Segal 036759066
+# *********************#
+
 import glob
 import operator
 import os
