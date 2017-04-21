@@ -94,3 +94,5 @@ HW1/.idea/HW1.iml
 HW2/.idea/HW2.iml
 *.html
 *.txt
+*.iml
+HW3/test/lyrics.csv
