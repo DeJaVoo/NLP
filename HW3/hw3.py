@@ -49,9 +49,9 @@ def load_words(path):
 
 def build_feature_vector(path, songs):
     """
-    
-    :param path: 
-    :param songs: 
+    build feature vector
+    :param path: given words path
+    :param songs: given songs DB
     :return: 
     """
     words = load_words(path)
@@ -59,10 +59,12 @@ def build_feature_vector(path, songs):
     vectors = []
     for j, song in enumerate(songs):
         vector = [0] * words_length
+        # check if given word is in song name, if yes mark 1 in i index
         # s = song.split("-")
         # for i in range(words_length):
         #     if words[i] in s:
         #         vector[i] = 1
+        # save the number of occurrences of a given word in song name
         for i in range(words_length):
             vector[i] = count_occurrences(words[i], song)
         vectors.append([vector, song])
@@ -73,14 +75,15 @@ def count_occurrences(word, sentence):
     return sentence.split("-").count(word)
 
 
-def ten_fold_cross_validation(classifier, data, target):
+def ten_fold_cross_validation(classifier, data, test):
     """
     Get 10 fold cross validation and return average
-    :param data: 
+    :param test:  test data
+    :param data: training data
     :param classifier: 
     :return: 
     """
-    scores = cross_val_score(classifier, data, target, cv=10)
+    scores = cross_val_score(classifier, data, test, cv=10)
     avg_score = sum(scores, 0.0) / len(scores)
     return avg_score
 
@@ -90,31 +93,31 @@ def print_scores(scores):
         print("- " + str(score[0]) + ": " + str(score[1]))
 
 
-def get_classifiers_scores(data, target):
+def get_classifiers_scores(data, test):
     """
     get classifiers scores
     :param data: training data
-    :param target: target data 
+    :param test: test data 
     :return: 
     """
     # SVM
     svm_classifier = svm.SVC()
-    svm_score = ten_fold_cross_validation(svm_classifier, data, target)
+    svm_score = ten_fold_cross_validation(svm_classifier, data, test)
 
     # NB
     nb_classifier = MultinomialNB()
-    nb_classifier.fit(data, target)
+    nb_classifier.fit(data, test)
     MultinomialNB()
-    nb_score = ten_fold_cross_validation(nb_classifier, data, target)
+    nb_score = ten_fold_cross_validation(nb_classifier, data, test)
 
     # Decision Tree
     decision_tree_classifier = DecisionTreeClassifier()
-    dt_score = ten_fold_cross_validation(decision_tree_classifier, data, target)
+    dt_score = ten_fold_cross_validation(decision_tree_classifier, data, test)
 
     # KNN
     knn_classifier = KNeighborsClassifier()
-    knn_classifier.fit(data, target)
-    knn_score = ten_fold_cross_validation(knn_classifier, data, target)
+    knn_classifier.fit(data, test)
+    knn_score = ten_fold_cross_validation(knn_classifier, data, test)
 
     return [['SVM', svm_score], ['Naive Bayes', nb_score], ['DecisionTree', dt_score], ['KNN', knn_score]]
 
@@ -126,11 +129,12 @@ def create_evaluation_data(data, labels):
     :param labels: data labels [first_lbl, second_lbl]
     :return: test_data, training_data
     """
-    # Build first class vectors
+
     first_data = data[0]
     second_data = data[1]
 
     db = []
+    # Build first class vectors
     for i in range(len(first_data)):
         vec = first_data[i][0]
         db.append([vec, labels[0]])
@@ -146,49 +150,65 @@ def create_evaluation_data(data, labels):
 
 
 def get_full_data(first_data, second_data, labels):
-    data = []
-    targets = []
+    """
+    Return the 2 lists, one list contains both given datasets (all DB)
+    second list contains all the labels
+    :param first_data: 
+    :param second_data: 
+    :param labels: 
+    :return: 
+    """
+    full_data = []
+    full_labels = []
 
-    # Build Positive Vectors
+    # Build first label vectors
     for i in range(len(first_data)):
-        data.append(first_data[i])
-        targets.append(labels[0])
-    # Build Negative Vectors
+        full_data.append(first_data[i])
+        full_labels.append(labels[0])
+    # Build second label Vectors
     for i in range(len(second_data)):
-        data.append(second_data[i])
-        targets.append(labels[1])
+        full_data.append(second_data[i])
+        full_labels.append(labels[1])
 
-    return data, targets
+    return full_data, full_labels
 
-
-def main():
-    # Check for expected number of Arguments
-    if len(argv) != number_of_args:
-        exit("Invalid number of arguments")
-
-    script, input_folder, words_file_input_path, best_words_output_path = argv
-
-    # Read all songs per given artist
-    beatles_songs = read_csv_by_filter(input_folder, 'beatles')
-    britney_spears_songs = read_csv_by_filter(input_folder, 'britney-spears')
+def first_question(beatles_songs, britney_spears_songs, words_file_input_path):
+    """
+    Answer the first question
+    :param beatles_songs: 
+    :param britney_spears_songs: 
+    :param words_file_input_path: 
+    :return: 
+    """
     beatles_features = build_feature_vector(words_file_input_path, beatles_songs)
     britney_spears_features = build_feature_vector(words_file_input_path, britney_spears_songs)
-
-    # Step 1: top frequent words features
     test_data, training_data = create_evaluation_data([beatles_features, britney_spears_features], [BEATLES_LBL,
                                                                                                     BRITNEY_LBL])
-    print('\n' + "step1 (top frequent words features):" + '\n')
-    print_scores(get_classifiers_scores(training_data, test_data))
+    return test_data, training_data
 
-    # Step 2: bag of words
-    (full_data, full_labels) = get_full_data(beatles_songs, britney_spears_songs , [BEATLES_LBL, BRITNEY_LBL])
+
+def second_question(beatles_songs, britney_spears_songs):
+    """
+    Answer the second question
+    :param beatles_songs: 
+    :param britney_spears_songs: 
+    :return: 
+    """
+    (full_data, full_labels) = get_full_data(beatles_songs, britney_spears_songs, [BEATLES_LBL, BRITNEY_LBL])
     vectorizer = TfidfVectorizer(min_df=1, stop_words='english')
     features = vectorizer.fit_transform(full_data, full_labels)
     vectors = features.A
-    print('\n' + "step2 (bag-of-words):" + '\n')
-    print_scores(get_classifiers_scores(vectors, test_data))
+    return full_data, full_labels, vectors
 
-    #Step 3:selected best features
+
+def third_question(best_words_output_path, full_data, test_data):
+    """
+    Answer the third question
+    :param best_words_output_path: 
+    :param full_data: 
+    :param test_data: 
+    :return: 
+    """
     vectorizer = TfidfVectorizer(min_df=1, stop_words='english')
     features = vectorizer.fit_transform(full_data)
     vectors = features.A
@@ -206,8 +226,49 @@ def main():
         except Exception as e:
             print("error while writing to file!")
     file.close()
+    return names
 
-    print('\n' + "step3 (selected best features):" + '\n')
+def fourth_question(full_data, names):
+    """
+    Answer the fourth question
+    :param full_data: 
+    :param names: 
+    :return: 
+    """
+    vectorizer = TfidfVectorizer(min_df=1, stop_words='english', vocabulary=names)
+    features = vectorizer.fit_transform(full_data)
+    vectors = features.A
+    return vectors
+
+
+def main():
+    # Check for expected number of Arguments
+    if len(argv) != number_of_args:
+        exit("Invalid number of arguments")
+
+    script, input_folder, words_file_input_path, best_words_output_path = argv
+
+    # Read all songs per given artist
+    beatles_songs = read_csv_by_filter(input_folder, 'beatles')
+    britney_spears_songs = read_csv_by_filter(input_folder, 'britney-spears')
+
+    # Step 1: top frequent words features
+    test_data, training_data = first_question(beatles_songs, britney_spears_songs, words_file_input_path)
+    print('\n' + "step1 (top frequent words features):" + '\n')
+    print_scores(get_classifiers_scores(training_data, test_data))
+
+    # Step 2: bag of words
+    full_data, full_labels, vectors = second_question(beatles_songs, britney_spears_songs)
+    print('\n' + "step2 (bag-of-words):" + '\n')
+    print_scores(get_classifiers_scores(vectors, full_labels))
+
+    # Step 3: choose 50 most meaningful words
+    names = third_question(best_words_output_path, full_data, test_data)
+
+    # Step 4: selected best features
+    vectors = fourth_question(full_data, names)
+    print('\n' + "step4 (selected best features):" + '\n')
+    print_scores(get_classifiers_scores(vectors, full_labels))
 
 
 if __name__ == "__main__":
