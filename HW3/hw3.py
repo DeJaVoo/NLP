@@ -1,15 +1,15 @@
 import csv
-import numpy as np
-from random import shuffle
+import os
 from sys import argv
 
+import numpy as np
 from sklearn import svm
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.feature_selection import SelectKBest
 from sklearn.model_selection import cross_val_score
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.feature_selection import SelectKBest
 
 BRITNEY_LBL = 1
 
@@ -23,14 +23,34 @@ def read_csv_by_filter(path, filter_value):
     Read csv file with given filter value
     :param path: path to file
     :param filter_value: string to filter list (artist name)
-    :return: list of all value in row[1] (songs)
+    :return: list of all value in row[5] (lyrics)
     """
     with open(path, 'r', encoding='utf8') as csv_file:
         data = []
         for row in csv.reader(csv_file, delimiter=','):
             if row[3] == filter_value:
-                data.append(row[1])
+                if row[5]:
+                    data.append(row[5])
     return data
+
+
+def get_tokens(lyrics):
+    """
+    Get token of given lyrics
+    :param lyrics: list of strings
+    :return: 
+    """
+    tokens = []
+    lines = lyrics.split("\n")
+
+    for line in lines:
+        # list of tokens
+        line = line.lower().replace(",", "").replace("\'", "").replace("\"", "")
+        line = line.split(' ')
+        # get all unigrams (just list of tokens)
+        tokens.extend([token for token in line])
+
+    return tokens
 
 
 def load_words(path):
@@ -42,7 +62,7 @@ def load_words(path):
     words = list()
     with open(path, 'r+', encoding='utf-8') as file:
         for line in file:
-            s = line.strip().replace(",", "").replace("\'", "").replace("\"", "")
+            s = line.strip().lower().replace(",", "").replace("\'", "").replace("\"", "")
             words.append(s)
     return words
 
@@ -59,20 +79,20 @@ def build_feature_vector(path, songs):
     vectors = []
     for j, song in enumerate(songs):
         vector = [0] * words_length
+        song = get_tokens(song)
         # check if given word is in song name, if yes mark 1 in i index
-        # s = song.split("-")
-        # for i in range(words_length):
-        #     if words[i] in s:
-        #         vector[i] = 1
-        # save the number of occurrences of a given word in song name
         for i in range(words_length):
-            vector[i] = count_occurrences(words[i], song)
-        vectors.append([vector, song])
+            if words[i] in song:
+                vector[i] = 1
+        # save the number of occurrences of a given word in song name
+        # for i in range(words_length):
+        #     vector[i] = count_occurrences(words[i], song)
+        vectors.append([vector, j])
     return vectors
 
 
 def count_occurrences(word, sentence):
-    return sentence.split("-").count(word)
+    return sentence.count(word)
 
 
 def ten_fold_cross_validation(classifier, data, test):
@@ -142,7 +162,6 @@ def create_evaluation_data(data, labels):
     for i in range(len(second_data)):
         vec = second_data[i][0]
         db.append([vec, labels[1]])
-    shuffle(db)
 
     training_data = [i[0] for i in db]
     test_data = [i[1] for i in db]
@@ -171,6 +190,7 @@ def get_full_data(first_data, second_data, labels):
         full_labels.append(labels[1])
 
     return full_data, full_labels
+
 
 def first_question(beatles_songs, britney_spears_songs, words_file_input_path):
     """
@@ -201,32 +221,48 @@ def second_question(beatles_songs, britney_spears_songs):
     return full_data, full_labels, vectors
 
 
-def third_question(best_words_output_path, full_data, test_data):
+def third_question(best_words_output_path, full_data, full_labels):
     """
     Answer the third question
     :param best_words_output_path: 
     :param full_data: 
-    :param test_data: 
+    :param full_labels: 
     :return: 
     """
     vectorizer = TfidfVectorizer(min_df=1, stop_words='english')
     features = vectorizer.fit_transform(full_data)
     vectors = features.A
-    all_names = vectorizer.get_feature_names()
+    features_names = vectorizer.get_feature_names()
     # take 50 words
-    b = SelectKBest(k=50)
-    b.fit_transform(vectors, test_data)
-    indices = b.get_support(indices="true")
-    names = np.array(all_names)[indices]
-    # Save To File
-    file = open(best_words_output_path, 'w+', encoding='utf-8')
+    select_50_best = SelectKBest(k=50)
+    select_50_best.fit_transform(vectors, full_labels)
+    indices = select_50_best.get_support(indices="true")
+    names = np.array(features_names)[indices]
+    create_file(best_words_output_path, names)
+    return names
+
+
+def create_file(given_path, names):
+    """
+    Create file with given path
+    :param given_path: 
+    :param names: 
+    :return: 
+    """
+    # Make sure the given_path folder exists, if not create it
+    drive, path = os.path.splitdrive(given_path)
+    path, filename = os.path.split(path)
+    folder = os.path.join(drive, path)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    file = open(os.path.join(folder, filename), 'w+', encoding='utf-8')
     for item in names:
         try:
             file.write(item + '\n')
         except Exception as e:
             print("error while writing to file!")
     file.close()
-    return names
+
 
 def fourth_question(full_data, names):
     """
@@ -263,7 +299,7 @@ def main():
     print_scores(get_classifiers_scores(vectors, full_labels))
 
     # Step 3: choose 50 most meaningful words
-    names = third_question(best_words_output_path, full_data, test_data)
+    names = third_question(best_words_output_path, full_data, full_labels)
 
     # Step 4: selected best features
     vectors = fourth_question(full_data, names)
