@@ -192,6 +192,28 @@ def get_full_data(first_data, second_data, labels):
     return full_data, full_labels
 
 
+def create_file(given_path, names):
+    """
+    Create file with given path
+    :param given_path: 
+    :param names: 
+    :return: 
+    """
+    # Make sure the given_path folder exists, if not create it
+    drive, path = os.path.splitdrive(given_path)
+    path, filename = os.path.split(path)
+    folder = os.path.join(drive, path)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    file = open(os.path.join(folder, filename), 'w+', encoding='utf-8')
+    for item in names:
+        try:
+            file.write(item + '\n')
+        except Exception as e:
+            print("error while writing to file!")
+    file.close()
+
+
 def first_question(beatles_songs, britney_spears_songs, words_file_input_path):
     """
     Answer the first question
@@ -242,28 +264,6 @@ def third_question(best_words_output_path, full_data, full_labels):
     return names
 
 
-def create_file(given_path, names):
-    """
-    Create file with given path
-    :param given_path: 
-    :param names: 
-    :return: 
-    """
-    # Make sure the given_path folder exists, if not create it
-    drive, path = os.path.splitdrive(given_path)
-    path, filename = os.path.split(path)
-    folder = os.path.join(drive, path)
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-    file = open(os.path.join(folder, filename), 'w+', encoding='utf-8')
-    for item in names:
-        try:
-            file.write(item + '\n')
-        except Exception as e:
-            print("error while writing to file!")
-    file.close()
-
-
 def fourth_question(full_data, names):
     """
     Answer the fourth question
@@ -275,6 +275,27 @@ def fourth_question(full_data, names):
     features = vectorizer.fit_transform(full_data)
     vectors = features.A
     return vectors
+
+
+def fifth_question(input_folder):
+    dean_martin_songs = read_csv_by_filter(input_folder, 'dean-martin')
+    albert_hammond_songs = read_csv_by_filter(input_folder, 'albert-hammond')
+    full_data, full_labels = get_full_data(dean_martin_songs, albert_hammond_songs, [0, 1])
+    # take 50 words
+    vectorizer = TfidfVectorizer(min_df=1, stop_words='english')
+    features = vectorizer.fit_transform(full_data)
+    vectors = features.A
+    features_names = vectorizer.get_feature_names()
+    # take 50 words
+    select_50_best = SelectKBest(k=50)
+    select_50_best.fit_transform(vectors, full_labels)
+    indices = select_50_best.get_support(indices="true")
+    names = np.array(features_names)[indices]
+
+    vectorizer = TfidfVectorizer(min_df=1, stop_words='english', vocabulary=names)
+    features = vectorizer.fit_transform(full_data)
+    vectors = features.A
+    return vectors, full_labels
 
 
 def main():
@@ -304,6 +325,12 @@ def main():
     # Step 4: selected best features
     vectors = fourth_question(full_data, names)
     print('\n' + "step4 (selected best features):" + '\n')
+    print_scores(get_classifiers_scores(vectors, full_labels))
+
+    # Step 5: new classification
+    # Read all songs per given artist
+    vectors, full_labels = fifth_question(input_folder)
+    print('\n' + "step5 (new classification):" + '\n')
     print_scores(get_classifiers_scores(vectors, full_labels))
 
 
