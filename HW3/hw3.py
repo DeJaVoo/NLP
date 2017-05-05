@@ -110,7 +110,7 @@ def ten_fold_cross_validation(classifier, data, test):
 
 def print_scores(scores):
     for score in scores:
-        print("- " + str(score[0]) + ": " + str(score[1]))
+        print("- " + str(score[0]) + ": " + str(round(score[1],2)))
 
 
 def get_classifiers_scores(data, test):
