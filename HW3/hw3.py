@@ -6,14 +6,18 @@ import numpy as np
 from sklearn import svm
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_selection import SelectKBest
-from sklearn.model_selection import cross_val_score
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.model_selection import cross_val_score
 
 BRITNEY_LBL = 1
 
 BEATLES_LBL = 0
+
+EXTRA_FEATURES = ['love', 'know', 'go', 'me', 'what', 'say',
+                  'get', 'like', 'baby', 'time', 'feel', 'yeah',
+                  'down', 'tell', 'make']
 
 number_of_args = 4
 
@@ -67,27 +71,27 @@ def load_words(path):
     return words
 
 
-def build_feature_vector(path, songs):
+def build_feature_vector(words, songs):
     """
     build feature vector
-    :param path: given words path
+    :param words: given words
     :param songs: given songs DB
     :return: 
     """
-    words = load_words(path)
     words_length = len(words)
     vectors = []
     for j, song in enumerate(songs):
         vector = [0] * words_length
         song = get_tokens(song)
         # check if given word is in song name, if yes mark 1 in i index
-        for i in range(words_length):
-            if words[i] in song:
-                vector[i] = 1
-        # save the number of occurrences of a given word in song name
         # for i in range(words_length):
-        #     vector[i] = count_occurrences(words[i], song)
-        vectors.append([vector, j])
+        #     if words[i] in song:
+        #         vector[i] = 1
+
+        # save the number of occurrences of a given word in song name
+        for i in range(words_length):
+            vector[i] = count_occurrences(words[i], song)
+        vectors.append(vector)
     return vectors
 
 
@@ -110,7 +114,7 @@ def ten_fold_cross_validation(classifier, data, test):
 
 def print_scores(scores):
     for score in scores:
-        print("- " + str(score[0]) + ": " + str(round(score[1],2)))
+        print("- " + str(score[0]) + ": " + str(round(score[1], 2)))
 
 
 def get_classifiers_scores(data, test):
@@ -127,7 +131,6 @@ def get_classifiers_scores(data, test):
     # NB
     nb_classifier = MultinomialNB()
     nb_classifier.fit(data, test)
-    MultinomialNB()
     nb_score = ten_fold_cross_validation(nb_classifier, data, test)
 
     # Decision Tree
@@ -142,54 +145,23 @@ def get_classifiers_scores(data, test):
     return [['SVM', svm_score], ['Naive Bayes', nb_score], ['DecisionTree', dt_score], ['KNN', knn_score]]
 
 
-def create_evaluation_data(data, labels):
+def get_full_data(data, labels):
     """
-    Generate test_data, training_data from given data
-    :param data: [first_data , second_data]
-    :param labels: data labels [first_lbl, second_lbl]
-    :return: test_data, training_data
-    """
-
-    first_data = data[0]
-    second_data = data[1]
-
-    db = []
-    # Build first class vectors
-    for i in range(len(first_data)):
-        vec = first_data[i][0]
-        db.append([vec, labels[0]])
-    # Build second class vectors
-    for i in range(len(second_data)):
-        vec = second_data[i][0]
-        db.append([vec, labels[1]])
-
-    training_data = [i[0] for i in db]
-    test_data = [i[1] for i in db]
-    return test_data, training_data
-
-
-def get_full_data(first_data, second_data, labels):
-    """
-    Return the 2 lists, one list contains both given datasets (all DB)
+    Return concatenations of the data (all DB)
     second list contains all the labels
-    :param first_data: 
-    :param second_data: 
-    :param labels: 
+    :param data:
+    :param labels:
     :return: 
     """
     full_data = []
     full_labels = []
 
-    # Build first label vectors
-    for i in range(len(first_data)):
-        full_data.append(first_data[i])
-        full_labels.append(labels[0])
-    # Build second label Vectors
-    for i in range(len(second_data)):
-        full_data.append(second_data[i])
-        full_labels.append(labels[1])
+    for i, data_set in enumerate(data):
+        for vec in data_set:
+            full_data.append(vec)
+            full_labels.append(labels[i])
 
-    return full_data, full_labels
+    return full_labels, full_data
 
 
 def create_file(given_path, names):
@@ -222,9 +194,11 @@ def first_question(beatles_songs, britney_spears_songs, words_file_input_path):
     :param words_file_input_path: 
     :return: 
     """
-    beatles_features = build_feature_vector(words_file_input_path, beatles_songs)
-    britney_spears_features = build_feature_vector(words_file_input_path, britney_spears_songs)
-    test_data, training_data = create_evaluation_data([beatles_features, britney_spears_features], [BEATLES_LBL,
+    words = load_words(words_file_input_path)
+    words = words + EXTRA_FEATURES
+    beatles_features = build_feature_vector(words, beatles_songs)
+    britney_spears_features = build_feature_vector(words, britney_spears_songs)
+    test_data, training_data = get_full_data([beatles_features, britney_spears_features], [BEATLES_LBL,
                                                                                                     BRITNEY_LBL])
     return test_data, training_data
 
@@ -236,7 +210,8 @@ def second_question(beatles_songs, britney_spears_songs):
     :param britney_spears_songs: 
     :return: 
     """
-    (full_data, full_labels) = get_full_data(beatles_songs, britney_spears_songs, [BEATLES_LBL, BRITNEY_LBL])
+    # (full_data, full_labels) = get_full_data(beatles_songs, britney_spears_songs, [BEATLES_LBL, BRITNEY_LBL])
+    (full_labels, full_data) = get_full_data([beatles_songs, britney_spears_songs], [BEATLES_LBL, BRITNEY_LBL])
     vectorizer = TfidfVectorizer(min_df=1, stop_words='english')
     features = vectorizer.fit_transform(full_data, full_labels)
     vectors = features.A
@@ -280,7 +255,7 @@ def fourth_question(full_data, names):
 def fifth_question(input_folder):
     dean_martin_songs = read_csv_by_filter(input_folder, 'dean-martin')
     albert_hammond_songs = read_csv_by_filter(input_folder, 'albert-hammond')
-    full_data, full_labels = get_full_data(dean_martin_songs, albert_hammond_songs, [0, 1])
+    full_labels, full_data = get_full_data([dean_martin_songs, albert_hammond_songs], [0, 1])
     # take 50 words
     vectorizer = TfidfVectorizer(min_df=1, stop_words='english')
     features = vectorizer.fit_transform(full_data)
