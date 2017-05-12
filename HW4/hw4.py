@@ -1,10 +1,11 @@
 import os
 # from gensim.models import Word2Vec
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.linear_model import LogisticRegression
 import codecs
 import nltk
 from sys import argv
-import string
+
 import xml.etree.ElementTree as ET
 
 INSTANCE = ".//instance"
@@ -48,6 +49,35 @@ def get_full_data(data, labels):
     return full_labels, full_data
 
 
+def get_data(data):
+    cord = []
+    division = []
+    formation = []
+    phone = []
+    product = []
+
+    for inst in data.findall(INSTANCE):
+
+        att = inst[0].attrib[SENSEID]
+
+        for sentence in inst[1].getchildren():
+
+            tokens = nltk.word_tokenize(sentence.text)
+            tokens = ' '.join(tokens).lower()
+            if att == CORD:
+                cord.append(tokens)
+            elif att == DIVISION:
+                division.append(tokens)
+            elif att == FORMATION:
+                formation.append(tokens)
+            elif att == PHONE:
+                phone.append(tokens)
+            elif att == PRODUCT:
+                product.append(tokens)
+
+    return cord, division, formation, phone, product
+
+
 def main():
     # Check for expected number of Arguments
     if len(argv) != number_of_args:
@@ -63,36 +93,26 @@ def main():
     train_tree = ET.parse(codecs.open(train_file_path, 'r+', 'utf-8'))
     test_tree = ET.parse(codecs.open(test_file_path, 'r+', 'utf-8'))
 
-    cord = []
-    division = []
-    formation = []
-    phone = []
-    product = []
-    printable = set(string.printable)
-    for inst in train_tree.findall(INSTANCE):
-
-        att = inst[0].attrib[SENSEID]
-
-        for sentence in inst[1].getchildren():
-
-            tokens = nltk.word_tokenize(sentence.text)
-
-            if att == CORD:
-                cord.append(tokens)
-            elif att == DIVISION:
-                division.append(tokens)
-            elif att == FORMATION:
-                formation.append(tokens)
-            elif att == PHONE:
-                phone.append(tokens)
-            elif att == PRODUCT:
-                product.append(tokens)
+    cord, division, formation, phone, product = get_data(train_tree)
 
     # Create bag of words using TfidfVectorizer
     full_labels, full_data = get_full_data([cord, division, formation, phone, product],
                                            [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
+
     vectorizer = TfidfVectorizer(min_df=1, stop_words='english')
-    features = vectorizer.fit_transform(full_data, full_labels)
+    features = vectorizer.fit_transform(full_data)
+
+    logit = LogisticRegression()
+    logit.fit(features, full_labels)
+
+    cord, division, formation, phone, product = get_data(test_tree)
+    full_test_labels, full_test_data = get_full_data([cord, division, formation, phone, product],
+                                           [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
+
+    test_vectorizer = TfidfVectorizer(min_df=1, stop_words='english')
+    test_features = test_vectorizer.fit_transform(full_test_data)
+
+    logit.predict(test_features)
 
     pass
 
