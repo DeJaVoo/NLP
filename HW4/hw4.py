@@ -13,6 +13,7 @@ import warnings
 
 warnings.filterwarnings(action='ignore', category=UserWarning, module='gensim')
 from gensim.models import KeyedVectors
+from sklearn.feature_selection import SelectKBest
 
 INSTANCE = ".//instance"
 
@@ -36,10 +37,11 @@ CORD_LBL = 0
 number_of_args = 4
 
 # Question 2 flags
-# Each flag control which section from question 2 to run
-# Only one value can be True if both False section 1 is calculated
+# Each flag control which section of question 2 to run
+# Only one value can be True
+# if all values False question 2 sub-section a is calculated
 b_2 = False
-c_2 = False
+c_2 = True
 d_2 = False
 
 
@@ -113,7 +115,7 @@ def extract(words):
     :param words: given list from our data structure
     :return: expected concatenated string for TfidfVectorizer
     """
-    
+
     # Make sure TfidfVectorizer works on a list of strings
     return words
 
@@ -127,26 +129,28 @@ def first_question(test_tree, train_tree):
     """
 
     # Get train data by classification
-    cord, division, formation, phone, product = get_data_from_xml(train_tree)
+    cord_train, division_train, formation_train, phone_train, product_train = get_data_from_xml(train_tree)
 
     # Build train data and labels arrays
-    full_labels, full_data = get_full_data([cord, division, formation, phone, product],
-                                           [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
+    full_train_labels, full_train_data = get_full_data \
+        ([cord_train, division_train, formation_train, phone_train, product_train],
+         [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
 
     # Create bag of words using TfidfVectorizer
     vectorizer = TfidfVectorizer(analyzer=extract, min_df=1, stop_words='english')
-    X = vectorizer.fit_transform(full_data, full_labels)
+    X = vectorizer.fit_transform(full_train_data, full_train_labels)
 
     # Run logistic regression
     model = LogisticRegression()
-    model.fit(X, full_labels)
+    model.fit(X, full_train_labels)
 
     # Get test data by classification
-    cord, division, formation, phone, product = get_data_from_xml(test_tree)
+    cord_test, division_test, formation_test, phone_test, product_test = get_data_from_xml(test_tree)
 
     # Build test data and labels arrays
-    full_test_labels, full_test_data = get_full_data([cord, division, formation, phone, product],
-                                                     [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
+    full_test_labels, full_test_data = get_full_data(
+        [cord_test, division_test, formation_test, phone_test, product_test],
+        [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
     # Trasnform test data to same shape of train data
     X_test = vectorizer.transform(full_test_data, full_test_labels)
 
@@ -169,6 +173,9 @@ def second_question(test_tree, train_tree):
     :param train_tree: train data, xml structure
     :return: 
     """
+    # prevent wrong flags values
+    if (b_2 and (c_2 or d_2)) or (not b_2 and c_2 and d_2):
+        raise ValueError('Question 2: you can\'t set more than one value as True for question 2 flags')
 
     # Load word2vec embeddings file
     words_embeddings = KeyedVectors.load_word2vec_format("wiki.en.100k.vec", binary=False)
@@ -188,6 +195,9 @@ def second_question(test_tree, train_tree):
     full_test_labels, full_test_data = get_full_data(
         [cord_test, division_test, formation_test, phone_test, product_test],
         [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
+
+    # Question 2 sub-section d (bonus) will only run if d_2 flag is set to True
+    bonus_section(full_test_data, full_test_labels, full_train_data, full_train_labels, 50)
 
     # Get train and test data features by word2vec
     X_full_data = get_features(full_train_data + full_test_data, words_embeddings)
@@ -210,6 +220,29 @@ def second_question(test_tree, train_tree):
     f_score = f1_score(y, y_predict, average='macro')
     accuracy = accuracy_score(y, y_predict)
     return accuracy, f_score
+
+
+def bonus_section(full_test_data, full_test_labels, full_train_data, full_train_labels, k):
+    """
+    The purpose of this method is to calculate to top K importance words
+    :param k: The number of words to select
+    :param full_test_data: 
+    :param full_test_labels: 
+    :param full_train_data: 
+    :param full_train_labels: 
+    :return: 
+    """
+    if d_2:
+        vectorizer = TfidfVectorizer(analyzer=extract, min_df=1, stop_words='english')
+        features = vectorizer.fit_transform(full_train_data + full_test_data)
+        vectors = features.A
+        features_names = vectorizer.get_feature_names()
+        # take k words
+        select_k_best = SelectKBest(k=k)
+        select_k_best.fit_transform(vectors, full_train_labels + full_test_labels)
+        indices = select_k_best.get_support(indices="true")
+        global names
+        names = np.array(features_names)[indices]
 
 
 def calculate_weight(x, c=20):
@@ -246,6 +279,7 @@ def get_features(data, words_embeddings):
                 if "line" in sentence:
                     line_index = sentence.index("line")
                 x = np.abs(sentence.index(word) - line_index)
+                # weight default value is 1 (Question 2 sub-section a)
                 w_i = 1
                 if b_2:
                     w_i = calculate_weight(x)
@@ -255,10 +289,8 @@ def get_features(data, words_embeddings):
                     else:
                         w_i = calculate_weight(x)
                 elif d_2:
-                    if np.abs(sentence.index(word) - line_index) <= 4:
-                        with open("word.txt", "a+") as text_file:
-                            text_file.write("Word is: %s" % word)
-                            text_file.write("\n")
+                    if word in names:
+                        w_i = calculate_weight(x, 50)
                     else:
                         w_i = calculate_weight(x)
                 index = words_embeddings.index2word.index(word)
