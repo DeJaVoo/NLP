@@ -34,6 +34,8 @@ DIVISION_LBL = 1
 CORD = "cord"
 CORD_LBL = 0
 
+labels = {CORD: CORD_LBL, DIVISION: DIVISION_LBL, FORMATION: FORMATION_LBL, PHONE: PHONE_LBL, PRODUCT: PRODUCT_LBL}
+
 number_of_args = 4
 
 # Question 2 flags
@@ -45,65 +47,31 @@ c_2 = True
 d_2 = False
 
 
-def get_full_data(data, labels):
-    """
-    Return concatenations of the data (all DB)
-    second list contains all the labels
-    :param data: list of list of data to concat
-    :param labels: list of all labels according to given data
-    :return: 
-    """
+def tokenize_sentences(inst):
+    result = []
+    for sentence in inst[1].getchildren():
+        tokens = nltk.word_tokenize(sentence.text.lower())
+        result.extend(tokens)
+    return result
+
+
+def get_full_data_from_xml(data):
     full_data = []
     full_labels = []
 
-    for i, data_set in enumerate(data):
-        for vec in data_set:
-            full_data.append(vec)
-            full_labels.append(labels[i])
+    for inst in data.findall(INSTANCE):
+        att = inst[0].attrib[SENSEID]
+        full_data.append(tokenize_sentences(inst))
+        full_labels.append(labels[att])
 
     return full_labels, full_data
-
-
-def get_data_from_xml(data):
-    """
-    Get the categories data
-    :param data: xml tree stracture
-    :return: cord, division, formation, phone, product arrays
-    """
-    cord = []
-    division = []
-    formation = []
-    phone = []
-    product = []
-
-    for inst in data.findall(INSTANCE):
-
-        att = inst[0].attrib[SENSEID]
-
-        tokenized_senteces = []
-        for sentence in inst[1].getchildren():
-            tokens = nltk.word_tokenize(sentence.text.lower())
-            tokenized_senteces.extend(tokens)
-
-        if att == CORD:
-            cord.append(tokenized_senteces)
-        elif att == DIVISION:
-            division.append(tokenized_senteces)
-        elif att == FORMATION:
-            formation.append(tokenized_senteces)
-        elif att == PHONE:
-            phone.append(tokenized_senteces)
-        elif att == PRODUCT:
-            product.append(tokenized_senteces)
-
-    return cord, division, formation, phone, product
 
 
 def print_scores(scores):
     """
     Print scores
     :param scores: given scorres
-    :return: 
+    :return:
     """
     for score in scores:
         print(str(score[0]) + ": " + str(round(score[1], 2)) + '\n')
@@ -120,45 +88,32 @@ def extract(words):
     return words
 
 
-def first_question(test_tree, train_tree):
+def first_question(train_data, train_labels, test_data, test_labels):
     """
     First question: implement logistic regression to recognize "line" category
-    :param test_tree: test data , xml structure  
-    :param train_tree: train data, xml structure
-    :return: 
+    :param train_data: the train data
+    :param train_labels: the train labels
+    :param test_data: the test data
+    :param test_labels: the test labels
+    :return:
     """
-
-    # Get train data by classification
-    cord_train, division_train, formation_train, phone_train, product_train = get_data_from_xml(train_tree)
-
-    # Build train data and labels arrays
-    full_train_labels, full_train_data = get_full_data \
-        ([cord_train, division_train, formation_train, phone_train, product_train],
-         [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
 
     # Create bag of words using TfidfVectorizer
     vectorizer = TfidfVectorizer(analyzer=extract, min_df=1, stop_words='english')
-    X = vectorizer.fit_transform(full_train_data, full_train_labels)
+    X = vectorizer.fit_transform(train_data, train_labels)
 
     # Run logistic regression
     model = LogisticRegression()
-    model.fit(X, full_train_labels)
+    model.fit(X, train_labels)
 
-    # Get test data by classification
-    cord_test, division_test, formation_test, phone_test, product_test = get_data_from_xml(test_tree)
-
-    # Build test data and labels arrays
-    full_test_labels, full_test_data = get_full_data(
-        [cord_test, division_test, formation_test, phone_test, product_test],
-        [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
     # Trasnform test data to same shape of train data
-    X_test = vectorizer.transform(full_test_data, full_test_labels)
+    X_test = vectorizer.transform(test_data, test_labels)
 
     # Predict using logistic regression
     y_predict = model.predict(X_test)
 
     # Flatten full_test_labels, this are the y (true) labels
-    y = np.ravel(full_test_labels)
+    y = np.ravel(test_labels)
 
     # Get f1_score and accuracy
     f_score = f1_score(y, y_predict, average='macro')
@@ -166,12 +121,14 @@ def first_question(test_tree, train_tree):
     return accuracy, f_score
 
 
-def second_question(test_tree, train_tree):
+def second_question(train_data, train_labels, test_data, test_labels):
     """
-    Second question: 
-    :param test_tree: test data , xml structure  
-    :param train_tree: train data, xml structure
-    :return: 
+    Second question:
+    :param train_data: the train data
+    :param train_labels: the train labels
+    :param test_data: the test data
+    :param test_labels: the test labels
+    :return:
     """
     # prevent wrong flags values
     if (b_2 and (c_2 or d_2)) or (not b_2 and c_2 and d_2):
@@ -180,27 +137,8 @@ def second_question(test_tree, train_tree):
     # Load word2vec embeddings file
     words_embeddings = KeyedVectors.load_word2vec_format("wiki.en.100k.vec", binary=False)
 
-    # Get train data by classification
-    cord_train, division_train, formation_train, phone_train, product_train = get_data_from_xml(train_tree)
-
-    # Get test data by classification
-    cord_test, division_test, formation_test, phone_test, product_test = get_data_from_xml(test_tree)
-
-    # Build train and test data and labels arrays
-    full_train_labels, full_train_data = get_full_data(
-        [cord_train, division_train, formation_train, phone_train, product_train],
-        [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
-
-    # Build test data and labels arrays
-    full_test_labels, full_test_data = get_full_data(
-        [cord_test, division_test, formation_test, phone_test, product_test],
-        [CORD_LBL, DIVISION_LBL, FORMATION_LBL, PHONE_LBL, PRODUCT_LBL])
-
-    # Question 2 sub-section d (bonus) will only run if d_2 flag is set to True
-    bonus_section(full_test_data, full_test_labels, full_train_data, full_train_labels, 50)
-
     # Get train and test data features by word2vec
-    X_full_data = get_features(full_train_data + full_test_data, words_embeddings)
+    X_full_data = get_features(train_data + test_data, train_labels + test_labels, words_embeddings)
 
     # Normalize full data features
     scaler = MaxAbsScaler()
@@ -208,13 +146,13 @@ def second_question(test_tree, train_tree):
 
     # Run logistic regression on normalized train data
     model = LogisticRegression()
-    model.fit(X_full_data_maxabs[0: len(full_train_data)], full_train_labels)
+    model.fit(X_full_data_maxabs[0: len(train_data)], train_labels)
 
     # Predict using logistic regression on normalized test data
-    y_predict = model.predict(X_full_data_maxabs[len(full_train_data): len(X_full_data_maxabs)])
+    y_predict = model.predict(X_full_data_maxabs[len(train_data): len(X_full_data_maxabs)])
 
     # Flatten full_test_labels, this are the y (true) labels
-    y = np.ravel(full_test_labels)
+    y = np.ravel(test_labels)
 
     # Get f1_score and accuracy
     f_score = f1_score(y, y_predict, average='macro')
@@ -222,34 +160,35 @@ def second_question(test_tree, train_tree):
     return accuracy, f_score
 
 
-def bonus_section(full_test_data, full_test_labels, full_train_data, full_train_labels, k):
+def bonus_section(data, labels, k):
     """
     The purpose of this method is to calculate to top K importance words
     :param k: The number of words to select
-    :param full_test_data: 
-    :param full_test_labels: 
-    :param full_train_data: 
-    :param full_train_labels: 
-    :return: 
+    :param full_test_data:
+    :param full_test_labels:
+    :param full_train_data:
+    :param full_train_labels:
+    :return: top K words
     """
     if d_2:
         vectorizer = TfidfVectorizer(analyzer=extract, min_df=1, stop_words='english')
-        features = vectorizer.fit_transform(full_train_data + full_test_data)
+        features = vectorizer.fit_transform(data)
         vectors = features.A
         features_names = vectorizer.get_feature_names()
         # take k words
         select_k_best = SelectKBest(k=k)
-        select_k_best.fit_transform(vectors, full_train_labels + full_test_labels)
+        select_k_best.fit_transform(vectors, labels)
         indices = select_k_best.get_support(indices="true")
-        global names
-        names = np.array(features_names)[indices]
+        return np.array(features_names)[indices]
+    else:
+        return []
 
 
-def calculate_weight(x, c=20):
+def calculate_gaussian(x, c=20):
     """
     Calculate weight value
     :param x: given x distance
-    :param c: default value 20 
+    :param c: default value 20
     :return: Calculated weight
     """
     a = 1
@@ -259,16 +198,37 @@ def calculate_weight(x, c=20):
     return a * np.exp(-1 * (numerator / denominator))
 
 
-def get_features(data, words_embeddings):
+def calculate_weight(line_index, names, sentence, word, x):
+    w_i = 1
+    if b_2:
+        w_i = calculate_gaussian(x)
+    elif c_2:
+        if sentence.index(word) >= line_index:
+            w_i = calculate_gaussian(x, 5)
+        else:
+            w_i = calculate_gaussian(x)
+    elif d_2:
+        if word in names:
+            w_i = calculate_gaussian(x, 50)
+        else:
+            w_i = calculate_gaussian(x)
+    return w_i
+
+
+def get_features(data, labels, words_embeddings):
     """
     Get features according to HW's definition
     b_2: Answer question 2 section b
     c_2: Answer question 2 section c
     d_2: Answer question 2 section d (bonus)
     :param data: given data
+    :param labels: given labels for the data
     :param words_embeddings: given word2vec embeddings
-    :return: 
+    :return:
     """
+    # Question 2 sub-section d (bonus) will only run if d_2 flag is set to True
+    names = bonus_section(data, labels, 50)
+
     X = np.zeros([len(data), words_embeddings.syn0.shape[1]])
     for i, sentence in enumerate(data):
         sum_sentence = np.zeros(words_embeddings.syn0.shape[1])
@@ -280,19 +240,7 @@ def get_features(data, words_embeddings):
                     line_index = sentence.index("line")
                 x = np.abs(sentence.index(word) - line_index)
                 # weight default value is 1 (Question 2 sub-section a)
-                w_i = 1
-                if b_2:
-                    w_i = calculate_weight(x)
-                elif c_2:
-                    if sentence.index(word) >= line_index:
-                        w_i = calculate_weight(x, 5)
-                    else:
-                        w_i = calculate_weight(x)
-                elif d_2:
-                    if word in names:
-                        w_i = calculate_weight(x, 50)
-                    else:
-                        w_i = calculate_weight(x)
+                w_i = calculate_weight(line_index, names, sentence, word, x)
                 index = words_embeddings.index2word.index(word)
                 v_i = words_embeddings.syn0[index]
                 sum_sentence += (w_i * v_i) / k
@@ -304,17 +252,17 @@ def get_features(data, words_embeddings):
 def create_file(given_path, bow_scores, word_embeddings_scores):
     """
     Create file with given path and write scores into it
-    :param word_embeddings_scores: 
-    :param bow_scores: 
-    :param given_path: 
-    :return: 
+    :param word_embeddings_scores:
+    :param bow_scores:
+    :param given_path:
+    :return:
     """
     # Make sure the given_path folder exists, if not create it
     drive, path = os.path.splitdrive(given_path)
     path, filename = os.path.split(path)
     folder = os.path.join(drive, path)
     # Check if  folder doesn't exist and create it
-    if not os.path.exists(folder):
+    if folder != '' and not os.path.exists(folder):
         os.makedirs(folder)
     file = open(os.path.join(folder, filename), 'w+', encoding='utf-8')
     try:
@@ -332,6 +280,7 @@ def create_file(given_path, bow_scores, word_embeddings_scores):
 
 
 def main():
+
     # Check for expected number of Arguments
     if len(argv) != number_of_args:
         exit("Invalid number of arguments")
@@ -343,14 +292,17 @@ def main():
     train_tree = elementTree.parse(codecs.open(train_file_path, 'r+', 'utf-8'))
     test_tree = elementTree.parse(codecs.open(test_file_path, 'r+', 'utf-8'))
 
+    train_labels, train_data = get_full_data_from_xml(train_tree)
+    test_labels, test_data = get_full_data_from_xml(test_tree)
+
     # First question
-    bow_accuracy, bow_f_score = first_question(test_tree, train_tree)
+    bow_accuracy, bow_f_score = first_question(train_data, train_labels, test_data, test_labels)
 
     print('\n' + "classification using BOW model:" + '\n')
     print_scores([['accuracy', bow_accuracy], ['f1-score', bow_f_score]])
 
     # Second question
-    word_embeddings_accuracy, word_embeddings_f_score = second_question(test_tree, train_tree)
+    word_embeddings_accuracy, word_embeddings_f_score = second_question(train_data, train_labels, test_data, test_labels)
     print('\n' + "classification using embeddings:" + '\n')
     print_scores([['accuracy', word_embeddings_accuracy], ['f1-score', word_embeddings_f_score]])
 
