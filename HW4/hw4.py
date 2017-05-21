@@ -43,7 +43,7 @@ number_of_args = 4
 # Only one value can be True
 # if all values False question 2 sub-section a is calculated
 b_2 = False
-c_2 = False
+c_2 = True
 d_2 = False
 
 
@@ -234,12 +234,8 @@ def get_features(data, labels, words_embeddings):
         sum_sentence = np.zeros(words_embeddings.syn0.shape[1])
         k = len(sentence)
         for word in sentence:
+            line_index = get_line_index(sentence)
             if word in words_embeddings.index2word:
-                line_index = 0
-                if "line" in sentence:
-                    line_index = sentence.index("line")
-                elif "lines" in sentence:
-                    line_index = sentence.index("lines")
                 x = np.abs(sentence.index(word) - line_index)
                 # weight default value is 1 (Question 2 sub-section a)
                 w_i = calculate_weight(line_index, names, sentence, word, x)
@@ -249,6 +245,15 @@ def get_features(data, labels, words_embeddings):
         X[i] = sum_sentence
 
     return X
+
+
+def get_line_index(sentence):
+    line_index = 0
+    if "line" in sentence:
+        line_index = sentence.index("line")
+    elif "lines" in sentence:
+        line_index = sentence.index("lines")
+    return line_index
 
 
 def create_file(given_path, bow_scores, word_embeddings_scores):
