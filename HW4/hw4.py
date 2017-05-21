@@ -43,7 +43,7 @@ number_of_args = 4
 # Only one value can be True
 # if all values False question 2 sub-section a is calculated
 b_2 = False
-c_2 = True
+c_2 = False
 d_2 = False
 
 
@@ -238,6 +238,8 @@ def get_features(data, labels, words_embeddings):
                 line_index = 0
                 if "line" in sentence:
                     line_index = sentence.index("line")
+                elif "lines" in sentence:
+                    line_index = sentence.index("lines")
                 x = np.abs(sentence.index(word) - line_index)
                 # weight default value is 1 (Question 2 sub-section a)
                 w_i = calculate_weight(line_index, names, sentence, word, x)
