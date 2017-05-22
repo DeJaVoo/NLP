@@ -34,7 +34,7 @@ DIVISION_LBL = 1
 CORD = "cord"
 CORD_LBL = 0
 
-labels = {CORD: CORD_LBL, DIVISION: DIVISION_LBL, FORMATION: FORMATION_LBL, PHONE: PHONE_LBL, PRODUCT: PRODUCT_LBL}
+labels_dic = {CORD: CORD_LBL, DIVISION: DIVISION_LBL, FORMATION: FORMATION_LBL, PHONE: PHONE_LBL, PRODUCT: PRODUCT_LBL}
 
 number_of_args = 4
 
@@ -48,6 +48,11 @@ d_2 = False
 
 
 def tokenize_sentences(inst):
+    """
+    tokenize sentences
+    :param inst: 
+    :return: 
+    """
     result = []
     for sentence in inst[1].getchildren():
         tokens = nltk.word_tokenize(sentence.text.lower())
@@ -56,13 +61,18 @@ def tokenize_sentences(inst):
 
 
 def get_full_data_from_xml(data):
+    """
+    Get full data from xml
+    :param data: given xml tree
+    :return: 
+    """
     full_data = []
     full_labels = []
 
     for inst in data.findall(INSTANCE):
         att = inst[0].attrib[SENSEID]
         full_data.append(tokenize_sentences(inst))
-        full_labels.append(labels[att])
+        full_labels.append(labels_dic[att])
 
     return full_labels, full_data
 
@@ -163,11 +173,9 @@ def second_question(train_data, train_labels, test_data, test_labels):
 def bonus_section(data, labels, k):
     """
     The purpose of this method is to calculate to top K importance words
+    :param data: 
+    :param labels: 
     :param k: The number of words to select
-    :param full_test_data:
-    :param full_test_labels:
-    :param full_train_data:
-    :param full_train_labels:
     :return: top K words
     """
     if d_2:
@@ -184,11 +192,11 @@ def bonus_section(data, labels, k):
         return []
 
 
-def calculate_gaussian(x, c=20):
+def calculate_gaussian(x, c):
     """
     Calculate weight value
     :param x: given x distance
-    :param c: default value 20
+    :param c: given c
     :return: Calculated weight
     """
     a = 1
@@ -201,17 +209,23 @@ def calculate_gaussian(x, c=20):
 def calculate_weight(line_index, names, sentence, word, x):
     w_i = 1
     if b_2:
-        w_i = calculate_gaussian(x)
+        w_i = calculate_gaussian(x, 20)
     elif c_2:
         if sentence.index(word) >= line_index:
             w_i = calculate_gaussian(x, 5)
         else:
-            w_i = calculate_gaussian(x)
+            w_i = calculate_gaussian(x, 20)
     elif d_2:
+        distance = np.abs(sentence.index(word) - line_index)
         if word in names:
-            w_i = calculate_gaussian(x, 50)
+            w_i = calculate_gaussian(x, 40)
+        elif sentence.index(word) >= line_index:
+            if distance <= 3:
+                w_i = calculate_gaussian(x, 25)
+            else:
+                w_i = calculate_gaussian(x, 2)
         else:
-            w_i = calculate_gaussian(x)
+            w_i = calculate_gaussian(x, 20)
     return w_i
 
 
@@ -287,7 +301,6 @@ def create_file(given_path, bow_scores, word_embeddings_scores):
 
 
 def main():
-
     # Check for expected number of Arguments
     if len(argv) != number_of_args:
         exit("Invalid number of arguments")
@@ -309,7 +322,8 @@ def main():
     print_scores([['accuracy', bow_accuracy], ['f1-score', bow_f_score]])
 
     # Second question
-    word_embeddings_accuracy, word_embeddings_f_score = second_question(train_data, train_labels, test_data, test_labels)
+    word_embeddings_accuracy, word_embeddings_f_score = second_question(train_data, train_labels, test_data,
+                                                                        test_labels)
     print('\n' + "classification using embeddings:" + '\n')
     print_scores([['accuracy', word_embeddings_accuracy], ['f1-score', word_embeddings_f_score]])
 
