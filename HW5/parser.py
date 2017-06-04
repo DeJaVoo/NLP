@@ -1,13 +1,6 @@
-import glob
-import operator
 import os
-from collections import Counter, Set
-from math import log, sqrt
-from sys import argv
-
-import itertools
-
 from decimal import Decimal
+from sys import argv
 
 number_of_args = 4
 
@@ -94,8 +87,10 @@ def cky_algorithm(grammar, v, sentence):
                                 p = value[1] * chart[i][k][b] * chart[k][j][c]
                                 if p > chart[i][j][value[0]]:
                                     chart[i][j][value[0]] = p
-                                    symbols[i][j][value[0]] = "[" + value[0] + " " + symbols[i][k][b] + symbols[k][j][c] + "]"
+                                    symbols[i][j][value[0]] = "[" + value[0] + " " + symbols[i][k][b] + symbols[k][j][
+                                        c] + "]"
     return chart[0][n]["S"], symbols[0][n]["S"]
+
 
 def get_labels(chart, i, k):
     x = [b for b in chart[i][k] if chart[i][k][b] > 0]
