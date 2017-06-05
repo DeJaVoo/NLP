@@ -15,7 +15,11 @@ def read_file(path):
     # for file_name in glob.glob(os.path.join(path, '*.*')):
     with open(path, 'r+', encoding='utf-8') as txt_file:
         # Extend result with all lines from current text file
-        result.extend(txt_file.read().split('\n'))
+        text = txt_file.read()
+        if text.endswith("\n"):
+            l = len(text) - 1
+            text = text[:l]
+        result.extend(text.split('\n'))
     return result
 
 
@@ -43,6 +47,11 @@ def write_file(path, text):
 
 
 def read_grammar(rules):
+    """
+    decode the grammar
+    :param rules: the input of the rules
+    :return: dictionary of all the rules, set of the labels
+    """
     dic = {}
     v = set()
     for rule in rules:
@@ -63,6 +72,13 @@ def read_grammar(rules):
 
 
 def cky_algorithm(grammar, v, sentence):
+    """
+    run the CKY algorithm
+    :param grammar:  the given grammar
+    :param v: set of all the labels in the grammar
+    :param sentence: sentence to run the algorithm on
+    :return: the probability to get a sentence, string of the tree that gives the sentence.
+    """
     words = sentence.split(" ")
     n = len(words)
     chart = [[{sym: 0 for sym in v} for j in range(0, n + 1)] for i in range(0, n)]
@@ -77,9 +93,9 @@ def cky_algorithm(grammar, v, sentence):
 
         for i in range(j - 2, -1, -1):
             for k in range(i + 1, j):
-                b_list = get_labels(chart, i, k)
+                b_list = get_possible_labels(chart, i, k)
                 for b in b_list:
-                    c_list = get_labels(chart, k, j)
+                    c_list = get_possible_labels(chart, k, j)
                     for c in c_list:
                         bc = (b, c)
                         if bc in grammar:
@@ -87,13 +103,12 @@ def cky_algorithm(grammar, v, sentence):
                                 p = value[1] * chart[i][k][b] * chart[k][j][c]
                                 if p > chart[i][j][value[0]]:
                                     chart[i][j][value[0]] = p
-                                    symbols[i][j][value[0]] = "[" + value[0] + " " + symbols[i][k][b] + symbols[k][j][
-                                        c] + "]"
+                                    symbols[i][j][value[0]] = "[" + value[0] + " " + symbols[i][k][b] + symbols[k][j][c] + "]"
     return chart[0][n]["S"], symbols[0][n]["S"]
 
 
-def get_labels(chart, i, k):
-    x = [b for b in chart[i][k] if chart[i][k][b] > 0]
+def get_possible_labels(chart, i, j):
+    x = [b for b in chart[i][j] if chart[i][j][b] > 0]
     return x
 
 
@@ -111,7 +126,7 @@ def main():
         p, sym = cky_algorithm(grammar, v, sentence)
         if p > 0:
             p = '%.2E' % Decimal(p)
-            line = p + sym
+            line = p + " " + sym
         else:
             line = "no parse"
         text.append(line)
